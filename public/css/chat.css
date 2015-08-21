@@ -1,10 +1,4 @@
-#panel {
-    height: 300px;
-    overflow: auto;
-    max-height: 300px;
-}
-
-#emoji, #sound, #desktop, #greentext, #synthesis, #recognition, #inline {
+#emoji, #sound, #desktop, #greentext, #synthesis, #recognition, #inline, #pmtabs {
     margin-left: 10px;
 }
 
@@ -22,6 +16,12 @@
     margin-left: 10px;
     font-style: italic;
     font-size: 9pt;
+}
+
+.chat {
+    height: 300px;
+    overflow: auto;
+    max-height: 300px;
 }
 
 .mdi {
@@ -105,6 +105,10 @@
 .spin {
     -webkit-animation: spin 1500ms infinite linear;
     animation: spin 1500ms infinite linear;
+}
+
+li.active {
+    border-bottom: solid #53F2E1 3px;
 }
 
 @-webkit-keyframes spin {

@@ -24,6 +24,7 @@ var settings = {
     'inline': true,
     'sound': true,
     'desktop': false,
+    'pmtabs': false,
     'synthesis': false,
     'recognition': false
 };
@@ -197,7 +198,7 @@ var connect = function() {
                 speechSynthesis.speak(textToSpeech);
             }
 
-            showChat(data.type, data.user, data.message, data.subtxt, data.mid);
+            showChat(data.type, data.user, data.message, data.subtxt, data.mid, data.extra);
         }
 
         if(data.type == 'role') {
@@ -266,7 +267,7 @@ function updateBar(icon, placeholder, disable) {
     $('#send').prop('disabled', disable);
 }
 
-function showChat(type, user, message, subtxt, mid) {
+function showChat(type, user, message, subtxt, mid, extra) {
     var nameclass = '';
 
     if(type == 'global' || type == 'kick' || type == 'ban' || type == 'info' || type == 'light' || type == 'help' || type == 'role') {
@@ -290,44 +291,61 @@ function showChat(type, user, message, subtxt, mid) {
             if(getUserByName(user).role == 3) nameclass = 'administrator';
         }
     }
-
-    if(!subtxt) {
-        $('#panel').append('<div data-mid="' + mid + '" class="' + type + '""><span class="name ' + nameclass + '"><b><a class="namelink" href="javascript:void(0)">' + user + '</a></b></span><span class="delete"><a href="javascript:void(0)">DELETE</a></span><span class="timestamp">' + getTime() + '</span><span class="msg">' + message + '</span></div>');
-    } else {
-        $('#panel').append('<div data-mid="' + mid + '" class="' + type + '""><span class="name ' + nameclass + '"><b><a class="namelink" href="javascript:void(0)">' + user + '</a></b></span><span class="timestamp">(' + subtxt + ') ' + getTime() + '</span><span class="msg">' + message + '</span></div>');
+    
+    //PM Tabs
+    var panel = '#panel';
+    if(type == 'pm' && settings.pmtabs){
+        var pmUser = (user == username ? extra : user);
+        panel = 'div[pm-user="' + pmUser + '"]';
+        if(!$('a[pm-link="' + pmUser + '"]')[0]){
+            $('#tabs').append('<li><a pm-link="' + pmUser + '" onClick="setTxt(\'/pm \' + $(this).attr(\'pm-link\'));" data-toggle="tab" href="div[pm-tab=&quot;' + pmUser + '&quot;]">PM: ' + pmUser + '</a></li>');
+            $.material.ripples('a[pm-link="' + pmUser + '"]');
+            if(!$('div[pm-tab="' + pmUser + '"]')[0]){
+                $('#tabs-content').append('<div pm-tab="' + pmUser + '" class="tab-pane fade"><div pm-user="' + pmUser + '" class="panel-body chat"></div></div>');
+            }
+        }
     }
     
-    $('#panel').animate({scrollTop: $('#panel').prop('scrollHeight')}, 500);
+    //Showing the message
+    if(!subtxt) {
+        $(panel).append('<div data-mid="' + mid + '" class="' + type + '""><span class="name ' + nameclass + '"><b><a class="namelink" href="javascript:void(0)">' + user + '</a></b></span><span class="delete"><a href="javascript:void(0)">DELETE</a></span><span class="timestamp">' + getTime() + '</span><span class="msg">' + message + '</span></div>');
+    } else {
+        $(panel).append('<div data-mid="' + mid + '" class="' + type + '""><span class="name ' + nameclass + '"><b><a class="namelink" href="javascript:void(0)">' + user + '</a></b></span><span class="timestamp">(' + subtxt + ') ' + getTime() + '</span><span class="msg">' + message + '</span></div>');
+    }
+    
+    $(panel).animate({scrollTop: $(panel).prop('scrollHeight')}, 500);
     updateStyle();
     nmr++;
     
+    //In-Line Images
     if(settings.inline) {
         var m = message.match(/(https?|ftp):\/\/[^\s/$.?#].[^\s]*/gmi);
 
         if(m) {
             m.forEach(function(e, i, a) {
+                
                 // Gfycat Support
                 if(e.indexOf('//gfycat') !== -1) {
                     var oldUrl = e;
                     e = e.replace('//gfycat.com', '//gfycat.com/cajax/get').replace('http://', 'https://');
 
                     $.getJSON(e, function(data) {
-                        testImage(data.gfyItem.gifUrl.replace('http://', 'https://'), mid, oldUrl);
+                        testImage(data.gfyItem.gifUrl.replace('http://', 'https://'), mid, oldUrl, panel);
                     });
                 } else {
-                    testImage(e, mid, e);
+                    testImage(e, mid, e, panel);
                 }
             });
         }
     }
 }
 
-function testImage(url, mid, oldUrl) {
+function testImage(url, mid, oldUrl, panel) {
     var img = new Image();
 
     img.onload = function() {
         $('div[data-mid=' + mid + '] .msg a[href="' + oldUrl.replace('https://', 'http://') + '"]').html(img);
-        $('#panel').animate({scrollTop: $('#panel').prop('scrollHeight')}, 500);
+        $(panel).animate({scrollTop: $(panel).prop('scrollHeight')}, 500);
     };
 
     img.src = url;
@@ -335,7 +353,7 @@ function testImage(url, mid, oldUrl) {
 
 
 function handleInput() {
-    var value = $('#message').val().replace(regex, ' ').trim();
+    var value = (((($('#txt').text() + ' ').length > 1) ? $('#txt').text() + ' ' : '') + $('#message').val()).replace(regex, ' ').trim();
 
     if(value.length > 0) {
         if(username === undefined) {
@@ -606,6 +624,11 @@ $(document).ready(function() {
             Notification.requestPermission();
         }
     });
+    
+    $('#pmtabs').bind('change', function() {
+        settings.pmtabs = document.getElementById('pmtabs').checked;
+        localStorage.settings = JSON.stringify(settings);
+    });
 
     $('#recognition').bind('change', function() {
         settings.recognition = document.getElementById('recognition').checked;
@@ -690,6 +713,10 @@ function desktopNotif(message) {
         icon: 'http://i.imgur.com/ehB0QcM.png',
         body: message
     });
+}
+
+function setTxt(txt){
+    $('#txt').text(txt);
 }
 
 if(typeof(Storage) !== 'undefined') {
